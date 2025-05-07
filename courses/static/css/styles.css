@@ -1,0 +1,319 @@
+/* admin.css - Phong cách hiện đại và bắt mắt */
+/* ========== CONTENT WRAPPER ========== */
+#content {
+    padding: 40px;
+    background-color: #f8fafc;
+    min-height: 100vh;
+    font-family: 'Inter', 'Roboto', sans-serif;
+}
+
+/* ========== HEADING ========== */
+#content h1 {
+    font-size: 32px;
+    font-weight: 800;
+    color: #111827;
+    margin-bottom: 30px;
+}
+
+/* ========== OBJECT TOOLS (Add Button) ========== */
+.object-tools {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 30px;
+}
+
+.object-tools a.addlink {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(90deg, #6366f1, #3b82f6);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 14px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
+}
+
+.object-tools a.addlink:hover {
+    background: linear-gradient(90deg, #4f46e5, #2563eb);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
+/* ========== TOOLBAR SEARCH ========== */
+#toolbar {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 30px;
+}
+
+#changelist-search {
+    display: flex;
+    align-items: center;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+    width: 100%;
+    max-width: 500px;
+}
+
+#changelist-search label {
+    padding: 0 12px;
+}
+
+#changelist-search input[type="text"] {
+    flex: 1;
+    border: none;
+    outline: none;
+    padding: 12px;
+    font-size: 14px;
+}
+
+#changelist-search input[type="submit"] {
+    background: #10b981;
+    border: none;
+    color: #fff;
+    font-weight: 600;
+    padding: 12px 20px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#changelist-search input[type="submit"]:hover {
+    background: #059669;
+}
+
+/* ========== TABLE LIST ========== */
+#result_list {
+    width: 100%;
+    background: #fff;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.05);
+}
+
+#result_list thead {
+    background-color: #f1f5f9;
+}
+
+#result_list th,
+#result_list td {
+    padding: 16px 20px;
+    font-size: 14px;
+    color: #374151;
+}
+
+#result_list th {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+#result_list tbody tr {
+    transition: background-color 0.3s;
+}
+
+#result_list tbody tr:hover {
+    background-color: #f9fafb;
+}
+
+/* ========== ACTIONS ========== */
+.actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.actions select {
+    padding: 10px 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    background-color: #fff;
+    font-size: 14px;
+    appearance: none;
+}
+
+.actions button {
+    background-color: #3b82f6;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 12px;
+    border: none;
+    font-weight: 600;
+    transition: background-color 0.3s;
+    cursor: pointer;
+}
+
+.actions button:hover {
+    background-color: #2563eb;
+}
+
+/* ========== PAGINATOR ========== */
+.paginator {
+    text-align: center;
+    margin-top: 30px;
+    font-size: 14px;
+    color: #6b7280;
+}
+
+.paginator input[type="submit"] {
+    background: #6366f1;
+    color: white;
+    font-weight: 600;
+    padding: 10px 20px;
+    border-radius: 12px;
+    border: none;
+    margin-left: 10px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.paginator input[type="submit"]:hover {
+    background: #4f46e5;
+}
+
+/* ========== SIDEBAR FILTER ========== */
+#changelist-filter {
+    margin-top: 40px;
+    background-color: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0px 4px 16px rgba(0, 0, 0, 0.05);
+    padding: 24px;
+}
+
+#changelist-filter h2 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: #111827;
+}
+
+#changelist-filter summary {
+    font-weight: 600;
+    cursor: pointer;
+    color: #374151;
+    margin-bottom: 10px;
+}
+
+#changelist-filter ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+#changelist-filter li {
+    margin: 8px 0;
+}
+
+#changelist-filter a {
+    color: #3b82f6;
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+#changelist-filter a:hover {
+    color: #1d4ed8;
+}
+
+/* Responsive tweak */
+@media (max-width: 768px) {
+    #toolbar, #object-tools, .actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+
+
+/* Sidebar tổng thể */
+#nav-sidebar {
+    background-color: #ffffff;
+    padding: 20px;
+    border-right: 1px solid #e5e7eb;
+    height: 100vh;
+    overflow-y: auto;
+    position: sticky;
+    top: 0;
+}
+
+/* Ô tìm kiếm */
+#nav-filter {
+    width: 100%;
+    padding: 10px 15px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    background-color: #f9fafb;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.3s ease;
+}
+
+#nav-filter:focus {
+    border-color: #3b82f6;
+}
+
+/* Các app (Authentication, Courses...) */
+#nav-sidebar .module {
+    margin-bottom: 25px;
+}
+
+#nav-sidebar .module caption {
+    font-weight: 600;
+    color: #374151;
+    text-transform: uppercase;
+    font-size: 13px;
+    margin-bottom: 10px;
+    display: block;
+}
+
+/* Danh sách models */
+#nav-sidebar table {
+    width: 100%;
+}
+
+#nav-sidebar tbody tr {
+    border-radius: 8px;
+    transition: background-color 0.3s ease;
+}
+
+#nav-sidebar tbody tr:hover {
+    background-color: #f0f9ff;
+}
+
+#nav-sidebar th a {
+    display: block;
+    padding: 8px 10px;
+    color: #4b5563;
+    text-decoration: none;
+    font-size: 14px;
+    border-radius: 8px;
+}
+
+#nav-sidebar th a:hover {
+    color: #2563eb;
+}
+
+/* Nút Add */
+#nav-sidebar td a.addlink {
+    background-color: #3b82f6;
+    color: white;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    margin-left: 10px;
+    display: inline-block;
+    transition: background-color 0.3s ease;
+}
+
+#nav-sidebar td a.addlink:hover {
+    background-color: #2563eb;
+}
+
+/* Model hiện tại đang mở */
+#nav-sidebar .current-model th a {
+    color: #1d4ed8;
+    font-weight: 600;
+}
