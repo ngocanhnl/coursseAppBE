@@ -28,6 +28,14 @@ DEBUG = True
 ALLOWED_HOSTS = ['*']
 
 
+# settings.py
+VNPAY_CONFIG = {
+    'vnp_TmnCode': "VH92V83I",  # Mã website của merchant trên hệ thống VNPay
+    'vnp_HashSecret': "FI8DNHRRIWNQ3WB4RVMJ4ZTYKQGTLMJG",  # Chuỗi bí mật để tạo checksum
+    'vnp_Url': "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",  # URL sandbox của VNPay
+    'vnp_ReturnUrl': "http://localhost:8000/payment/vnpay-return/",  # URL callback khi thanh toán xong
+}
+
 # Application definition
 
 INSTALLED_APPS = [

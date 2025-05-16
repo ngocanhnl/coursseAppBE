@@ -1,7 +1,8 @@
+from cloudinary.provisioning import users
 from rest_framework.serializers import ModelSerializer
 from rest_framework.validators import UniqueValidator
 from rest_framework import serializers
-from courses.models import Course, ClassCategory, Lesson, Comment, Bookmark, Tag, User, Apointment, Chat
+from courses.models import Course, ClassCategory, Lesson, Comment, Bookmark, Tag, User, Apointment, News, Payment
 
 
 class UserSerializer(ModelSerializer):
@@ -29,6 +30,19 @@ class UserSerializer(ModelSerializer):
         return u
 
 
+class UserMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['first_name', 'avatar','id']
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['avatar'] = instance.avatar.url if instance.avatar else ''
+        return data
+
+
+
+
 class CategorySerializer(ModelSerializer):
     class Meta:
         model = ClassCategory
@@ -45,8 +59,8 @@ class ItemSerializer(ModelSerializer):
 
 class CourseSerializer(ItemSerializer):
     like = serializers.SerializerMethodField()
-    students = UserSerializer(many=True, read_only=True)
-    teacher = UserSerializer(read_only=True)
+    students = UserMiniSerializer(many=True, read_only=True)
+    teacher = UserMiniSerializer(read_only=True)
     def get_like(self, course):
         request =  self.context.get('request')
         if request and request.user.is_authenticated:
@@ -104,30 +118,40 @@ class ApointmentSerializer(ModelSerializer):
         fields = ['id', 'date', 'time', 'notes','student','teacher']
 
 
-class ChatSerializer(ModelSerializer):
 
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        data['user'] = UserSerializer(instance.user).data
-        data['course'] = CourseSerializer(instance.course).data
-        return data
+
+class NewsSerializer(ModelSerializer):
+    user = UserMiniSerializer(read_only=True)
 
     class Meta:
-        model = Chat
-        fields = ['id', 'message', 'created_at', 'user', 'course']
-        extra_kwargs = {
-            'course': {'write_only': True},
-        }
+        model = News
+        fields = ['id', 'title', 'content', 'created_at', 'updated_at', 'image', 'user', 'course','type_news']
 
 
-class ChatListSerializer(serializers.ModelSerializer):
 
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        data['user'] = UserSerializer(instance.user).data
-        return data
-
+class PaymentSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Chat
+        model = Payment
+        fields = ['id', 'order_id', 'amount', 'payment_url', 'status', 'created_at']
+        read_only_fields = ['id', 'payment_url', 'status', 'created_at']
 
-        exclude = ['course']  # hoặc liệt kê cụ thể các trường muốn giữ lại
+
+class PaymentCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Payment
+        fields = ['amount', 'order_id']
+
+
+class PaymentCallbackSerializer(serializers.Serializer):
+    vnp_Amount = serializers.CharField(required=True)
+    vnp_BankCode = serializers.CharField(required=False, allow_blank=True)
+    vnp_BankTranNo = serializers.CharField(required=False, allow_blank=True)
+    vnp_CardType = serializers.CharField(required=False, allow_blank=True)
+    vnp_OrderInfo = serializers.CharField(required=True)
+    vnp_PayDate = serializers.CharField(required=True)
+    vnp_ResponseCode = serializers.CharField(required=True)
+    vnp_TmnCode = serializers.CharField(required=True)
+    vnp_TransactionNo = serializers.CharField(required=True)
+    vnp_TransactionStatus = serializers.CharField(required=True)
+    vnp_TxnRef = serializers.CharField(required=True)
+    vnp_SecureHash = serializers.CharField(required=True)

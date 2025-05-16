@@ -26,6 +26,11 @@ class BaseModel(models.Model):
 
 
 
+
+
+
+
+
 class ClassCategory(BaseModel):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
@@ -51,7 +56,7 @@ class Course(BaseModel):
     description = models.TextField()
     image = CloudinaryField('image', null=True, blank=True)
     capacity = models.PositiveIntegerField()
-    price = models.DecimalField(max_digits=10, decimal_places=2)
+    price = models.IntegerField()
     start_date = models.DateField()
     end_date = models.DateField()
     bookmark_user = models.ManyToManyField(User, through=Bookmark, related_name='bookmark_user')
@@ -89,9 +94,9 @@ class Tag(BaseModel):
 class Lesson(BaseModel):
     title = models.CharField(max_length=100)
     content = RichTextField()
-    image = CloudinaryField('image', null=True)
+    image = CloudinaryField('image', null=True, blank=True)
     course = models.ForeignKey(Course, on_delete=models.PROTECT)
-    tags = models.ManyToManyField(Tag)
+    tags = models.ManyToManyField(Tag, null = True, blank=True)
     is_done = models.BooleanField(default=False)
 
     def __str__(self):
@@ -134,11 +139,43 @@ class Apointment(BaseModel):
         return f"{self.student.username} - {self.teacher.username} - {self.date} {self.time}"
 
 
-class Chat(BaseModel):
-    message = models.TextField()
+class News(BaseModel):
+    title = models.CharField(max_length=100)
+    content = RichTextField()
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
+    type_news = models.CharField(max_length=100, default='news')
+    image = CloudinaryField('image', null=True, blank=True)
+    def __str__(self):
+        return f"{self.content}"
+
+
+
+import uuid
+
+class Payment(models.Model):
+    STATUS_CHOICES = (
+        ('pending', 'Chờ thanh toán'),
+        ('completed', 'Đã thanh toán'),
+        ('failed', 'Thanh toán thất bại'),
+    )
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    order_id = models.CharField(max_length=100, unique=True)
+    amount = models.DecimalField(max_digits=12, decimal_places=0)
+    payment_url = models.URLField(blank=True, null=True)
+    vnp_txn_ref = models.CharField(max_length=100, blank=True, null=True)
+    vnp_transaction_no = models.CharField(max_length=100, blank=True, null=True)
+    vnp_response_code = models.CharField(max_length=10, blank=True, null=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='payments')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"{self.message}"
+        return f"Payment {self.order_id} - {self.amount} VND"
+
+
+

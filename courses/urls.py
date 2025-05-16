@@ -16,7 +16,11 @@ router.register('comments', views.CommentViewSet, basename='comment')
 
 router.register('apointment', views.ApointmentViewSet, basename='apointment')
 
+from .views import VNPayCreateUrl, VNPayReturnView
+
 # router.register('chat', views.ChatViewSet, basename='chat')
 urlpatterns = [
     path('', include(router.urls)),
+    path('order/create_payment_url/', VNPayCreateUrl.as_view(), name='vnpay-create'),
+    path('payment/vnpay-return/', VNPayReturnView.as_view(), name='vnpay-return'),
 ]
