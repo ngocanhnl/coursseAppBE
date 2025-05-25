@@ -5,7 +5,7 @@ from django.utils.safestring import mark_safe
 from django.urls import path
 # Register your models here.
 
-from .models import Course, Session, ClassCategory, Lesson, Comment, Bookmark, Tag, User
+from .models import Course, Session, ClassCategory, Lesson, Comment, Bookmark, Tag, User, Discount
 
 
 
@@ -113,6 +113,27 @@ class CourseAdmin(admin.ModelAdmin):
         # Nếu là HLV, chỉ hiển thị course mà họ là giáo viên
         return qs.filter(teacher=request.user)
 
+class DiscountAdmin(admin.ModelAdmin):
+    list_display = ['code', 'percentage', 'start_date', 'end_date']
+    search_fields = ['code']
+    list_filter = ['start_date', 'end_date']
+    readonly_fields = ['created_at', 'updated_at']
+
+    def has_module_permission(self, request):
+        return request.user.role == 'admin'
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.role == 'admin'
+
+    def has_add_permission(self, request):
+        return request.user.role == 'admin'
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.role == 'admin'
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.role == 'admin'
+
 
 admin_site = MyAdminSite(name='eCourseAdmin')
 admin_site.register(User, UserAdmin)
@@ -124,3 +145,4 @@ admin_site.register(Lesson, MyLessonAdmin)
 admin_site.register(Comment)
 admin_site.register(Bookmark)
 admin_site.register(Tag)
+admin_site.register(Discount)

@@ -2,8 +2,8 @@ from cloudinary.provisioning import users
 from rest_framework.serializers import ModelSerializer
 from rest_framework.validators import UniqueValidator
 from rest_framework import serializers
-from courses.models import Course, ClassCategory, Lesson, Comment, Bookmark, Tag, User, Apointment, News, Payment
-
+from courses.models import Course, ClassCategory, Lesson, Comment, Discount, Tag, User, Apointment, News, Payment,Order, ExpoDevice
+from datetime import date
 
 class UserSerializer(ModelSerializer):
 
@@ -57,19 +57,48 @@ class ItemSerializer(ModelSerializer):
         return data
 
 
+
+class DiscountSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Discount
+        fields = ['id', 'code', 'discount_percentage', 'is_active', 'created_at', 'updated_at']
+        extra_kwargs = {
+            'code': {
+                'validators': [UniqueValidator(queryset=Discount.objects.all())]
+            }
+        }
+
+
+
+
+
 class CourseSerializer(ItemSerializer):
     like = serializers.SerializerMethodField()
     students = UserMiniSerializer(many=True, read_only=True)
     teacher = UserMiniSerializer(read_only=True)
+    best_active_discount = serializers.SerializerMethodField()
     def get_like(self, course):
         request =  self.context.get('request')
         if request and request.user.is_authenticated:
             return course.like_set.filter(user=request.user, is_active=True).exists()
     class Meta:
         model = Course
-        fields = ['id', 'name', 'description', 'image','capacity', 'price', 'start_date', 'end_date','like', 'teacher', 'category', 'students']
+        fields = ['id', 'name', 'description', 'image','capacity', 'price','best_active_discount', 'start_date', 'end_date','like', 'teacher', 'category', 'students']
 
-
+    def get_best_active_discount(self, course):
+        today = date.today()
+        discount = (
+            Discount.objects.filter(
+                course=course,
+                is_active = True,
+                end_date__gte=today
+            )
+            .order_by('-discount_percentage')
+            .first()
+        )
+        if discount:
+            return DiscountSerializer(discount).data
+        return None
 
 class TagSerializer(ModelSerializer):
     class Meta:
@@ -130,28 +159,34 @@ class NewsSerializer(ModelSerializer):
 
 
 class PaymentSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Payment
         fields = ['id', 'order_id', 'amount', 'payment_url', 'status', 'created_at']
         read_only_fields = ['id', 'payment_url', 'status', 'created_at']
 
 
-class PaymentCreateSerializer(serializers.ModelSerializer):
+class OrderSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Payment
-        fields = ['amount', 'order_id']
+        model = Order
+        fields = ['id', 'user', 'course', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 
-class PaymentCallbackSerializer(serializers.Serializer):
-    vnp_Amount = serializers.CharField(required=True)
-    vnp_BankCode = serializers.CharField(required=False, allow_blank=True)
-    vnp_BankTranNo = serializers.CharField(required=False, allow_blank=True)
-    vnp_CardType = serializers.CharField(required=False, allow_blank=True)
-    vnp_OrderInfo = serializers.CharField(required=True)
-    vnp_PayDate = serializers.CharField(required=True)
-    vnp_ResponseCode = serializers.CharField(required=True)
-    vnp_TmnCode = serializers.CharField(required=True)
-    vnp_TransactionNo = serializers.CharField(required=True)
-    vnp_TransactionStatus = serializers.CharField(required=True)
-    vnp_TxnRef = serializers.CharField(required=True)
-    vnp_SecureHash = serializers.CharField(required=True)
+
+class ExpoDeviceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExpoDevice
+        fields = ['token']
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        token = validated_data['token']
+
+        device, _ = ExpoDevice.objects.update_or_create(
+            user=user,
+            token=token,  # không nên unique token toàn cục
+            defaults={'token': token}
+        )
+        return device
+

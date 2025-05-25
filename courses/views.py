@@ -1,14 +1,14 @@
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db.models import Q
 from courses import serializers
 from rest_framework import viewsets, generics, status, parsers, permissions
-from courses.models import ClassCategory, Course, Lesson, Comment, Tag, User, Like, News, Apointment
+from courses.models import ClassCategory, Course, Lesson, Comment, Tag, User, Like, News, Apointment, Payment, Order, ExpoDevice
 from courses.paginators import ItemPagination, CommentPagination
 from courses.perm import CommentOwner, IsHLV
-
-
+from courses.utils import notify_user
 
 
 #
@@ -143,9 +143,17 @@ class LessonViewSet(viewsets.ViewSet, generics.RetrieveAPIView):
 
     @action(methods=['post'], detail=True, url_path='lesson-done')
     def lesson_done(self, request, pk):
-        lesson = self.get_object()
-        lesson.is_done = not lesson.is_done
+        print("request", request.user)
+
+        lesson = Lesson.objects.select_related('course').get(id=pk)
+        lesson.is_done = True
         lesson.save()
+
+        students = lesson.course.students.all()
+
+        notify_user(students, "Bài học đã hoàn thành",
+                     f"Bài học '{lesson.title}' đã được giáo viên đánh dấu hoàn thành.")
+
         return Response(serializers.LessonSerializer(lesson).data, status=status.HTTP_200_OK)
 
 
@@ -173,9 +181,12 @@ class UserViewSet(viewsets.ViewSet, generics.CreateAPIView, generics.RetrieveAPI
 
     @action(methods=['get'], url_path='my-appointment', detail=True, permission_classes=[permissions.IsAuthenticated])
     def get_my_appointment(self, request, pk):
-        appointment = Apointment.objects.filter(student=request.user, is_active=True)
+        appointments = Apointment.objects.filter(
+            Q(student_id=pk) | Q(teacher_id=pk),
+            is_active=True
+        )
 
-        return Response(serializers.ApointmentSerializer(appointment, many=True).data, status=status.HTTP_200_OK)
+        return Response(serializers.ApointmentSerializer(appointments, many=True).data, status=status.HTTP_200_OK)
 
     @action(methods=['get'], url_path='my-courses', detail=False, permission_classes=[permissions.IsAuthenticated])
     def get_my_courses(self, request):
@@ -220,6 +231,13 @@ class CommentViewSet(viewsets.ViewSet, generics.DestroyAPIView, generics.UpdateA
     permission_classes = [CommentOwner]
 
 
+
+class OrderViewSet(viewsets.ViewSet, generics.CreateAPIView):
+    serializer_class = serializers.OrderSerializer
+    # permission_classes = [permissions.IsAuthenticated]
+
+
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.conf import settings
@@ -228,64 +246,42 @@ import urllib.parse
 import hmac
 import hashlib
 import random
-# class VNPayCreateUrl(APIView):
-#     def post(self, request):
-#         order_id = str(random.randint(100000, 999999))
-#         amount = random.randint(100000, 999999)
-#         client_ip = "127.0.0.1"
-#
-#         config = settings.VNPAY_CONFIG
-#         vnp_TxnRef = str(random.randint(100000, 999999))
-#         vnp_Amount = int(amount) * 100
-#         vnp_OrderInfo = f"Thanh toan don hang {order_id}"
-#         vnp_ReturnUrl = "http://localhost:8000/order/vnpay-return/"
-#         vnp_CreateDate = datetime.now().strftime('%Y%m%d%H%M%S')
-#
-#         inputData = {
-#             "vnp_Version": "2.1.0",
-#             "vnp_Command": "pay",
-#             "vnp_TmnCode": config['vnp_TmnCode'],
-#             "vnp_Amount": vnp_Amount,
-#             "vnp_CurrCode": "VND",
-#             "vnp_TxnRef": vnp_TxnRef,
-#             "vnp_OrderInfo": vnp_OrderInfo,
-#             "vnp_OrderType": "other",
-#             "vnp_Locale": "vn",
-#             "vnp_BankCode": "NCB",
-#             "vnp_ReturnUrl": vnp_ReturnUrl,
-#             "vnp_IpAddr": client_ip,
-#             "vnp_CreateDate": vnp_CreateDate,
-#             "vnp_SecureHashType": "SHA512"
-#         }
-#
-#         sorted_data = sorted(inputData.items())
-#         hash_data = '&'.join(f"{k}={v}" for k, v in sorted_data)
-#         query_string = urllib.parse.urlencode(sorted_data)
-#         print(config['vnp_HashSecret'])
-#         print(inputData)
-#         secure_hash = hmac.new(
-#             config['vnp_HashSecret'].encode(),
-#             hash_data.encode(),
-#             hashlib.sha512
-#         ).hexdigest()
-#
-#         payment_url = f"{config['vnp_Url']}?{query_string}&vnp_SecureHash={secure_hash}"
-#
-#         return Response({"payment_url": payment_url})
-#
+
 
 class VNPayCreateUrl(APIView):
     def post(self, request):
+
         # Generate order details
-        order_id = str(random.randint(100000, 999999))
-        amount = request.data.get('amount', random.randint(100000, 999999))
+        amount = request.data.get('amount')
         client_ip = request.META.get('REMOTE_ADDR', '127.0.0.1')
+        print("Data", request.data)
+
+        order_id = request.data.get('orderId', f"ORDER{random.randint(100000, 999999)}")
+        print("orderId", order_id)
+        current_order = Order.objects.filter(id=order_id).first()
+        print("User pay", current_order.user_id)
+        # amount = int(request.data.get('amount', random.randint(100000, 999999)))
+        bank_code = request.data.get('bank_code', None)
+
+        order_object = Order.objects.get(id=order_id)
+        user_object = User.objects.get(id=current_order.user_id)
+        # Construct the final payment URL
+
+        payment = Payment.objects.create(
+            order=order_object,
+            amount=amount,
+            # payment_url=payment_url,
+            # vnp_txn_ref=vnp_TxnRef,
+            user=user_object,  # đảm bảo endpoint có @authentication_classes
+            status='pending'
+        )
 
         config = settings.VNPAY_CONFIG
         vnp_TxnRef = order_id  # Using order_id as transaction reference for consistency
-        vnp_Amount = int(amount) * 100  # Convert to smallest currency unit (cents)
+        vnp_Amount = (amount) * 100  # Convert to smallest currency unit (cents)
         vnp_OrderInfo = f"Thanh toan don hang {order_id}"
-        vnp_ReturnUrl = "https://a999-2001-ee0-4f01-2ec0-206e-70d2-cbc9-2008.ngrok-free.app/payment/vnpay-return/"
+        vnp_ReturnUrl = "https://f342-2001-ee0-4f42-2f20-34fb-694d-6a47-61da.ngrok-free.app/payment/vnpay-return/?paymentId="+str(payment.id)
+        # vnp_ReturnUrl = "https://5ed7-2001-ee0-4f01-2ec0-3c2b-72b7-3457-5400.ngrok-free.app/payment/vnpay-return/"
         vnp_CreateDate = datetime.now().strftime('%Y%m%d%H%M%S')
 
         # Prepare payment data
@@ -324,9 +320,19 @@ class VNPayCreateUrl(APIView):
             hashlib.sha512
         ).hexdigest()
 
-        # Construct the final payment URL
+        # order_object = Order.objects.get(id=order_id)
+        # user_object = User.objects.get(id=7)
+        # # Construct the final payment URL
+        #
+        # payment = Payment.objects.create(
+        #     order=order_object,
+        #     amount=amount,
+        #     # payment_url=payment_url,
+        #     # vnp_txn_ref=vnp_TxnRef,
+        #     user=user_object,  # đảm bảo endpoint có @authentication_classes
+        #     status='pending'
+        # )
         payment_url = f"{config['vnp_Url']}?{query_string}&vnp_SecureHash={secure_hash}&vnp_SecureHashType=SHA512"
-
         # Log the transaction details for debugging (remove in production)
         # logger.debug(f"VNPay URL created: {payment_url}")
 
@@ -339,34 +345,88 @@ class VNPayCreateUrl(APIView):
 import logging
 logger = logging.getLogger(__name__)
 
+
 class VNPayReturnView(APIView):
     def get(self, request):
-        input_data = request.query_params.dict()
+        raw_query = request.META['QUERY_STRING']
+        full_data = dict(urllib.parse.parse_qsl(raw_query))
+        vnp_secure_hash = full_data.pop('vnp_SecureHash', None)
+        vnp_secure_hash_type = full_data.pop('vnp_SecureHashType', None)
+
+        # Không đưa paymentId vào khi tính hash
+        input_data = {k: v for k, v in full_data.items() if k != 'paymentId'}
+
         logger.info(f"Input data: {input_data}")
-        vnp_secure_hash = input_data.pop('vnp_SecureHash', None)
-        vnp_secure_hash_type = input_data.pop('vnp_SecureHashType', None)
+        print("32113123", input_data)
+        # vnp_secure_hash = input_data.pop('vnp_SecureHash', None)
+        # vnp_secure_hash_type = input_data.pop('vnp_SecureHashType', None)
 
         sorted_data = sorted(input_data.items())
         query_string = urllib.parse.urlencode(sorted_data)
+
 
         # Verify hash
         config = settings.VNPAY_CONFIG
         secret = config['vnp_HashSecret'].encode()
         message = query_string.encode()
-        generated_hash = hmac.new(secret, message, hashlib.sha512).hexdigest()
+        generated_hash = hmac.new(secret, query_string.encode(), hashlib.sha512).hexdigest()
+        paymentId = full_data.get('paymentId')
+
+
+        payment = Payment.objects.get(id=paymentId)
+        print("payment", payment)
+        print("Hash từ VNPay:", vnp_secure_hash)
+        print("Hash tự tạo:", generated_hash)
+        print("So sánh:", vnp_secure_hash == generated_hash)
+        print("PAYMENT ID:", paymentId)
+        print("TRƯỚC khi cập nhật trạng thái:", payment.status)
 
         if vnp_secure_hash == generated_hash:
-            # TODO: cập nhật trạng thái đơn hàng theo `vnp_TxnRef` trong DB nếu cần
+            if payment.status != "completed":
+                payment.status = "completed"
+                payment.save()
+                return Response({
+                    "status": "success",
+                    "message": "Payment completed"
+                })
+
+        # Nếu sai hash nhưng status đã completed rồi => đừng fail
+        if payment.status == "completed":
             return Response({
                 "status": "success",
-                "message": "Payment verified",
+                "message": "Already completed",
                 "data": input_data
             })
-        else:
-            return Response({
-                "status": "error",
-                "message": "Invalid hash"
-            }, status=400)
+
+        # Trường hợp hash sai + chưa completed => mark failed
+        payment.status = "failed"
+        payment.save()
+        return Response({
+            "status": "error",
+            "message": "Invalid hash or payment not completed"
+        }, status=400)
 
 
+
+class ExpoDeviceView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = serializers.ExpoDeviceSerializer(data=request.data)
+        if serializer.is_valid():
+            token = serializer.validated_data['token']
+            ExpoDevice.objects.update_or_create(user=request.user, defaults={'token': token})
+            return Response({'status': 'Token saved'})
+        print("❌ Serializer Error:", serializer.errors)
+        return Response(serializer.errors, status=400)
+
+class DiscountViewSet(viewsets.ViewSet, generics.CreateAPIView, generics.RetrieveAPIView):
+    serializer_class = serializers.DiscountSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        discount = serializer.save(user=request.user)
+        return Response(serializers.DiscountSerializer(discount).data, status=status.HTTP_201_CREATED)
 

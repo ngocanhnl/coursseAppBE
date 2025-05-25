@@ -16,6 +16,15 @@ class User(AbstractUser):
     avatar = CloudinaryField('image', null=True, blank=True)
 
 
+
+class ExpoDevice(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    token = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
+
+
 class BaseModel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, null=True)
     updated_at = models.DateTimeField(auto_now=True,null=True)
@@ -68,7 +77,14 @@ class Course(BaseModel):
     class Meta:
         ordering = ['-id']
 
-
+class Discount(BaseModel):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    discount_percentage = models.IntegerField()
+    start_date = models.DateField()
+    end_date = models.DateField()
+    code = models.CharField(max_length=20, unique=True, null=True, blank=True)
+    def __str__(self):
+        return f"{self.course.name} - {self.discount_percentage}%"
 
 
 class Session(BaseModel):
@@ -153,6 +169,17 @@ class News(BaseModel):
 
 
 
+
+class Order(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user')
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='course')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Order {self.order_id} - {self.user.username} - {self.course.name}"
+
+
 import uuid
 
 class Payment(models.Model):
@@ -163,7 +190,7 @@ class Payment(models.Model):
     )
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    order_id = models.CharField(max_length=100, unique=True)
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='order', null=True, blank=True)
     amount = models.DecimalField(max_digits=12, decimal_places=0)
     payment_url = models.URLField(blank=True, null=True)
     vnp_txn_ref = models.CharField(max_length=100, blank=True, null=True)
@@ -176,6 +203,9 @@ class Payment(models.Model):
 
     def __str__(self):
         return f"Payment {self.order_id} - {self.amount} VND"
+
+
+
 
 
 
