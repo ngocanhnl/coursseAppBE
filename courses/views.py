@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from django.db.models import Q
 from courses import serializers
 from rest_framework import viewsets, generics, status, parsers, permissions
-from courses.models import ClassCategory, Course, Lesson, Comment, Tag, User, Like, News, Apointment, Payment, Order, ExpoDevice
+from courses.models import ClassCategory, Course, Lesson, Comment, Tag, User, Like, News, Apointment, Payment, Order, ExpoDevice, TeacherProfile
 from courses.paginators import ItemPagination, CommentPagination
 from courses.perm import CommentOwner, IsHLV
 from courses.utils import notify_user
@@ -109,10 +109,12 @@ class CourseViewSet(viewsets.ViewSet, generics.ListAPIView, generics.RetrieveAPI
     def get_comment(self, request, pk):
 
         if request.method.__eq__('POST'):
+            print("Post comment", request.data)
             c = serializers.CommentSerializer(data={
                 'content': request.data.get('content'),
                 'user': request.user.pk,
-                'course': pk
+                'course': pk,
+                'parent': request.data.get('parent', None)
             })
             c.is_valid(raise_exception=True)
             d = c.save()
@@ -179,6 +181,8 @@ class UserViewSet(viewsets.ViewSet, generics.CreateAPIView, generics.RetrieveAPI
         return query
 
 
+
+
     @action(methods=['get'], url_path='my-appointment', detail=True, permission_classes=[permissions.IsAuthenticated])
     def get_my_appointment(self, request, pk):
         appointments = Apointment.objects.filter(
@@ -187,6 +191,15 @@ class UserViewSet(viewsets.ViewSet, generics.CreateAPIView, generics.RetrieveAPI
         )
 
         return Response(serializers.ApointmentSerializer(appointments, many=True).data, status=status.HTTP_200_OK)
+
+    @action(methods=['patch'], url_path='update-profile', detail=False,
+            permission_classes=[permissions.IsAuthenticated])
+    def update_profile(self, request):
+        user = request.user
+        serializer = self.get_serializer(user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(serializers.UserSerializer(user).data, status=status.HTTP_200_OK)
 
     @action(methods=['get'], url_path='my-courses', detail=False, permission_classes=[permissions.IsAuthenticated])
     def get_my_courses(self, request):
@@ -280,7 +293,7 @@ class VNPayCreateUrl(APIView):
         vnp_TxnRef = order_id  # Using order_id as transaction reference for consistency
         vnp_Amount = (amount) * 100  # Convert to smallest currency unit (cents)
         vnp_OrderInfo = f"Thanh toan don hang {order_id}"
-        vnp_ReturnUrl = "https://f342-2001-ee0-4f42-2f20-34fb-694d-6a47-61da.ngrok-free.app/payment/vnpay-return/?paymentId="+str(payment.id)
+        vnp_ReturnUrl = "https://bd67-2001-ee0-4f42-2f20-98d0-6fad-f8ad-5324.ngrok-free.app/payment/vnpay-return/?paymentId="+str(payment.id)
         # vnp_ReturnUrl = "https://5ed7-2001-ee0-4f01-2ec0-3c2b-72b7-3457-5400.ngrok-free.app/payment/vnpay-return/"
         vnp_CreateDate = datetime.now().strftime('%Y%m%d%H%M%S')
 
@@ -417,7 +430,7 @@ class ExpoDeviceView(APIView):
             token = serializer.validated_data['token']
             ExpoDevice.objects.update_or_create(user=request.user, defaults={'token': token})
             return Response({'status': 'Token saved'})
-        print("❌ Serializer Error:", serializer.errors)
+        print("Serializer Error:", serializer.errors)
         return Response(serializer.errors, status=400)
 
 class DiscountViewSet(viewsets.ViewSet, generics.CreateAPIView, generics.RetrieveAPIView):
@@ -430,3 +443,21 @@ class DiscountViewSet(viewsets.ViewSet, generics.CreateAPIView, generics.Retriev
         discount = serializer.save(user=request.user)
         return Response(serializers.DiscountSerializer(discount).data, status=status.HTTP_201_CREATED)
 
+
+class TeacherProfileViewSet(viewsets.ViewSet):
+    def retrieve(self, request, pk=None):
+        try:
+            user = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return Response({"error": "User không tồn tại"}, status=status.HTTP_404_NOT_FOUND)
+
+        if user.role != 'hlv':
+            return Response({"error": "User này không phải là HLV"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            teacher_profile = user.teacher_profile
+        except TeacherProfile.DoesNotExist:
+            return Response({"error": "HLV chưa có hồ sơ"}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = serializers.TeacherProfileSerializer(teacher_profile)
+        return Response(serializer.data, status=status.HTTP_200_OK)

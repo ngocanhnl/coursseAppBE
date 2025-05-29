@@ -19,6 +19,7 @@ router.register('apointment', views.ApointmentViewSet, basename='apointment')
 router.register('order', views.OrderViewSet, basename='order')
 
 router.register('discount', views.DiscountViewSet, basename='discount')
+router.register('teacher-profile', views.TeacherProfileViewSet, basename='teacher-profile')
 
 from .views import VNPayCreateUrl, VNPayReturnView, ExpoDeviceView
 

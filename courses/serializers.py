@@ -2,20 +2,17 @@ from cloudinary.provisioning import users
 from rest_framework.serializers import ModelSerializer
 from rest_framework.validators import UniqueValidator
 from rest_framework import serializers
-from courses.models import Course, ClassCategory, Lesson, Comment, Discount, Tag, User, Apointment, News, Payment,Order, ExpoDevice
+from courses.models import Course, ClassCategory, Lesson, Comment, Discount, Tag, User, Apointment, News, Payment,Order, ExpoDevice, TeacherProfile
 from datetime import date
 
 class UserSerializer(ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id','username', 'email', 'first_name', 'last_name', 'password', 'avatar','is_superuser','is_staff','role']
+        fields = ['id','username', 'email', 'first_name', 'last_name','phone_number', 'password', 'avatar','is_superuser','is_staff','role']
         extra_kwargs = {
             'password': {'write_only': True},
         }
-
-
-
     def to_representation(self, instance):
         data = super().to_representation(instance)
 
@@ -40,6 +37,10 @@ class UserMiniSerializer(serializers.ModelSerializer):
         data['avatar'] = instance.avatar.url if instance.avatar else ''
         return data
 
+class TeacherProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TeacherProfile
+        fields = ['id', 'user', 'degree', 'experience_years', 'certificate']
 
 
 
@@ -125,11 +126,12 @@ class CommentSerializer(ModelSerializer):
     def to_representation(self, instance):
         data = super().to_representation(instance)
         data['user'] = UserSerializer(instance.user).data
+        data['parent'] = CommentSerializer(instance.parent).data if instance.parent else None
         return data
 
     class Meta:
         model = Comment
-        fields = ['id', 'content', 'created_at', 'user', 'course']
+        fields = ['id', 'content', 'created_at', 'user', 'course', 'parent']
         extra_kwargs = {
             'course': {'write_only': True},
         }

@@ -1,50 +1,325 @@
 {% extends 'admin/base_site.html' %}
 
 {% block content %}
-<h1>THÔNG KÊ KHÓA HỌC</h1>
+<div class="content-main">
+    <h1>Thống kê hệ thống</h1>
 
-<ul>
-    {% for s in stats %}
-    <li>{{ s.id }} - {{ s.name }}: {{ s.course_count }}</li>
-    {% endfor %}
-</ul>
+    <!-- Bộ lọc thời gian -->
+    <div style="margin-bottom: 20px; padding: 20px; background: #f8f9fa; border-radius: 5px;">
+        <form method="get" style="display: flex; gap: 15px; align-items: end; flex-wrap: wrap;">
+            <div>
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Thời gian:</label>
+                <select name="period" onchange="toggleCustomDate()" style="padding: 8px; border: 1px solid #ddd; border-radius: 3px;">
+                    <option value="week" {% if current_period == 'week' %}selected{% endif %}>Tuần hiện tại</option>
+                    <option value="month" {% if current_period == 'month' %}selected{% endif %}>Tháng hiện tại</option>
+                    <option value="year" {% if current_period == 'year' %}selected{% endif %}>Năm</option>
+                    <option value="custom" {% if current_period == 'custom' %}selected{% endif %}>Tùy chọn</option>
+                </select>
+            </div>
 
-<div style="width: 40%;">
-  <canvas id="myChart"></canvas>
+            <div id="customDate" style="display: {% if current_period == 'custom' %}flex{% else %}none{% endif %}; gap: 10px;">
+                <div>
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Tháng:</label>
+                    <select name="month" style="padding: 8px; border: 1px solid #ddd; border-radius: 3px;">
+                        {% for month_num, month_name in months %}
+                            <option value="{{ month_num }}" {% if selected_month|add:0 == month_num %}selected{% endif %}>
+                                {{ month_name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; margin-bottom: 5px; font-weight: bold;">Năm:</label>
+                    <select name="year" style="padding: 8px; border: 1px solid #ddd; border-radius: 3px;">
+                        {% for year in years %}
+                            <option value="{{ year }}" {% if selected_year|add:0 == year %}selected{% endif %}>
+                                {{ year }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Khóa học:</label>
+                <select name="course" style="padding: 8px; border: 1px solid #ddd; border-radius: 3px; min-width: 200px;">
+                    <option value="">Tất cả khóa học</option>
+                    {% for course in all_courses %}
+                        <option value="{{ course.id }}" {% if selected_course|add:0 == course.id %}selected{% endif %}>
+                            {{ course.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="submit" style="padding: 8px 16px; background: #007cba; color: white; border: none; border-radius: 3px; cursor: pointer;">
+                Lọc
+            </button>
+        </form>
+    </div>
+{#     <div style="display: {% if current_period == 'month' %}flex{% else %}none{% endif %}; gap: 10px;" id="monthYearFilter">#}
+{#            <div>#}
+{#                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Tháng:</label>#}
+{#                <select name="month" style="padding: 8px; border: 1px solid #ddd; border-radius: 3px;">#}
+{#                    {% for i in month %}#}
+{#                        <option value="{{ i }}" {% if selected_month == i %}selected{% endif %}>Tháng {{ i }}</option>#}
+{#                    {% endfor %}#}
+{#                </select>#}
+{#            </div>#}
+{##}
+{#            <div>#}
+{#                <label style="display: block; margin-bottom: 5px; font-weight: bold;">Năm:</label>#}
+{#                <select name="year" style="padding: 8px; border: 1px solid #ddd; border-radius: 3px;">#}
+{#                    {% for year in years %}#}
+{#                        <option value="{{ year }}" {% if selected_year == year %}selected{% endif %}>{{ year }}</option>#}
+{#                    {% endfor %}#}
+{#                </select>#}
+{#            </div>#}
+{#     </div>#}
+    <!-- Cards thống kê tổng quan -->
+    <div style="display: flex; gap: 20px; margin-bottom: 30px;">
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 5px; flex: 1; text-align: center;">
+            <h3>Tổng học viên</h3>
+            <h2 style="color: #007cba;">{{ total_members }}</h2>
+        </div>
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 5px; flex: 1; text-align: center;">
+            <h3>Tổng khóa học</h3>
+            <h2 style="color: #007cba;">{{ total_courses }}</h2>
+        </div>
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 5px; flex: 1; text-align: center;">
+            <h3>{% if selected_course %}Doanh thu khóa học{% else %}Tổng doanh thu{% endif %}</h3>
+            <h2 style="color: #007cba;">{{ total_revenue|floatformat:0 }} VND</h2>
+        </div>
+    </div>
+
+    <!-- Chi tiết khóa học được chọn -->
+    {% if course_detail %}
+    <div style="background: #e8f4fd; padding: 20px; border-radius: 5px; margin-bottom: 30px; border-left: 4px solid #007cba;">
+        <h3 style="margin-top: 0; color: #007cba;">Chi tiết: {{ course_detail.name }}</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            <div><strong>Giá khóa học:</strong> {{ course_detail.price|floatformat:0 }} VND</div>
+            <div><strong>Sức chứa:</strong> {{ course_detail.capacity }} học viên</div>
+            <div><strong>Số học viên hiện tại:</strong> {{ course_detail.total_students }}</div>
+            <div><strong>Số đơn hàng:</strong> {{ course_detail.total_orders }}</div>
+            <div><strong>Ngày bắt đầu:</strong> {{ course_detail.start_date }}</div>
+            <div><strong>Ngày kết thúc:</strong> {{ course_detail.end_date }}</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Biểu đồ -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
+        <!-- Biểu đồ đăng ký học viên -->
+        <div style="background: white; padding: 20px; border: 1px solid #ddd; border-radius: 5px;">
+            <h3>Đăng ký học viên mới</h3>
+            <canvas id="memberChart" width="400" height="200"></canvas>
+        </div>
+
+        <!-- Biểu đồ doanh thu -->
+        <div style="background: white; padding: 20px; border: 1px solid #ddd; border-radius: 5px;">
+            <h3>Doanh thu</h3>
+            <canvas id="revenueChart" width="400" height="200"></canvas>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+        <!-- Biểu đồ doanh thu theo khóa học -->
+        <div style="background: white; padding: 20px; border: 1px solid #ddd; border-radius: 5px;">
+            <h3>Top 10 khóa học theo doanh thu</h3>
+            <canvas id="courseRevenueChart" width="400" height="300"></canvas>
+        </div>
+
+        <!-- Biểu đồ số học viên theo khóa học -->
+        <div style="background: white; padding: 20px; border: 1px solid #ddd; border-radius: 5px;">
+            <h3>Top 10 khóa học theo số học viên</h3>
+            <canvas id="courseStudentsChart" width="400" height="300"></canvas>
+        </div>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+    function toggleCustomDate() {
+        const period = document.querySelector('select[name="period"]').value;
+        const customDate = document.getElementById('customDate');
+        customDate.style.display = period === 'custom' ? 'flex' : 'none';
+    }
 
-    let data = [];
-    let labels = [];
+    // Biểu đồ đăng ký học viên
+    const memberCtx = document.getElementById('memberChart').getContext('2d');
+    new Chart(memberCtx, {
+        type: 'line',
+        data: {
+            labels: {{ member_chart_data.labels|safe }},
+            datasets: [{
+                label: 'Học viên mới',
+                data: {{ member_chart_data.data|safe }},
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
 
-    {% for s in stats %}
-    data.push({{ s.course_count }})
-    labels.push('{{ s.name }}')
-    {% endfor %}
+    // Biểu đồ doanh thu
+    const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+    new Chart(revenueCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ revenue_chart_data.labels|safe }},
+            datasets: [{
+                label: 'Doanh thu (VND)',
+                data: {{ revenue_chart_data.data|safe }},
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value.toLocaleString() + ' VND';
+                        }
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'Doanh thu: ' + context.parsed.y.toLocaleString() + ' VND';
+                        }
+                    }
+                }
+            }
+        }
+    });
 
-window.onload = function() {
-  const ctx = document.getElementById('myChart');
+    // Biểu đồ doanh thu theo khóa học - có thể click để xem chi tiết
+    const courseRevenueCtx = document.getElementById('courseRevenueChart').getContext('2d');
+    new Chart(courseRevenueCtx, {
+        type: 'doughnut',
+        data: {
+            labels: {{ course_revenue_data.labels|safe }},
+            datasets: [{
+                data: {{ course_revenue_data.data|safe }},
+                backgroundColor: [
+                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+                    '#FF9F40', '#FF6384', '#C9CBCF', '#4BC0C0', '#FF6384'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        boxWidth: 12,
+                        font: {
+                            size: 10
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.label + ': ' + context.parsed.toLocaleString() + ' VND';
+                        }
+                    }
+                }
+            },
+            onClick: function(event, elements) {
+                if (elements.length > 0) {
+                    const index = elements[0].index;
+                    const courseIds = {{ course_revenue_data.ids|safe }};
+                    if (courseIds[index]) {
+                        const url = new URL(window.location);
+                        url.searchParams.set('course', courseIds[index]);
+                        window.location.href = url.toString();
+                    }
+                }
+            }
+        }
+    });
 
-  new Chart(ctx, {
+    // Biểu đồ số học viên theo khóa học
+    const courseStudentsCtx = document.getElementById('courseStudentsChart').getContext('2d');
+new Chart(courseStudentsCtx, {
     type: 'bar',
     data: {
-      labels: labels,
-      datasets: [{
-        label: '# Số lượng',
-        data: data,
-        borderWidth: 1
-      }]
+        labels: {{ course_students_data.labels|safe }},
+        datasets: [{
+            label: 'Số học viên',
+            data: {{ course_students_data.data|safe }},
+            backgroundColor: 'rgba(255, 99, 132, 0.6)',
+            borderColor: 'rgba(255, 99, 132, 1)',
+            borderWidth: 1
+        }]
     },
     options: {
-      scales: {
-        y: {
-          beginAtZero: true
+        responsive: true,
+        indexAxis: 'y',  // <-- BIỂU ĐỒ NGANG
+        scales: {
+            x: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false
+            }
         }
-      }
     }
-  });
-}
+});
+    {#const courseStudentsCtx = document.getElementById('courseStudentsChart').getContext('2d');#}
+    {#new Chart(courseStudentsCtx, {#}
+    {#    type: 'horizontalBar',#}
+    {#    data: {#}
+    {#        labels: {{ course_students_data.labels|safe }},#}
+    {#        datasets: [{#}
+    {#            label: 'Số học viên',#}
+    {#            data: {{ course_students_data.data|safe }},#}
+    {#            backgroundColor: 'rgba(255, 99, 132, 0.6)',#}
+    {#            borderColor: 'rgba(255, 99, 132, 1)',#}
+    {#            borderWidth: 1#}
+    {#        }]#}
+    {#    },#}
+    {#    options: {#}
+    {#        responsive: true,#}
+    {#        indexAxis: 'y',#}
+    {#        scales: {#}
+    {#            x: {#}
+    {#                beginAtZero: true,#}
+    {#                ticks: {#}
+    {#                    stepSize: 1#}
+    {#                }#}
+    {#            }#}
+    {#        },#}
+    {#        plugins: {#}
+    {#            legend: {#}
+    {#                display: false#}
+    {#            }#}
+    {#        }#}
+    {#    }#}
+
 </script>
 {% endblock %}

@@ -13,8 +13,19 @@ class User(AbstractUser):
         ('hoc-vien', 'Hoc Vien'),
     )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='hoc-vien', null=True, blank=True)
+    phone_number = models.CharField(max_length=15, null=True, blank=True)
     avatar = CloudinaryField('image', null=True, blank=True)
 
+
+
+class TeacherProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='teacher_profile')
+    degree = models.CharField(max_length=255)
+    experience_years = models.PositiveIntegerField(default=0)
+    certificate = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"TeacherProfile for {self.user.username}"
 
 
 class ExpoDevice(models.Model):
@@ -56,6 +67,13 @@ class Bookmark(BaseModel):
     def __str__(self):
         return f"{self.user.username} - {self.classBookmark.name}"
 
+class Enrollment(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    course = models.ForeignKey('Course', on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True,null=True)
+    class Meta:
+        unique_together = ('user', 'course')
 
 
 
@@ -69,7 +87,13 @@ class Course(BaseModel):
     start_date = models.DateField()
     end_date = models.DateField()
     bookmark_user = models.ManyToManyField(User, through=Bookmark, related_name='bookmark_user')
-    students = models.ManyToManyField(User, related_name="enrolled_courses", null=True, blank=True)
+    # tạm thời đổi tên để Django coi như field mới
+    # students_new = models.ManyToManyField(User, related_name="enrolled_courses_new", blank=True)
+
+    students = models.ManyToManyField(User, through='Enrollment', related_name="enrolled_courses")
+    # students = models.ManyToManyField(User, related_name="enrolled_courses", blank=True)
+    # students = models.ManyToManyField(User, related_name="enrolled_courses")
+
     teacher = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='teaching_courses')
     def __str__(self):
         return f"{self.name}"
