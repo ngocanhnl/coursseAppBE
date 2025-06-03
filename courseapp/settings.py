@@ -33,7 +33,7 @@ VNPAY_CONFIG = {
     'vnp_TmnCode': "VH92V83I",  # Mã website của merchant trên hệ thống VNPay
     'vnp_HashSecret': "FI8DNHRRIWNQ3WB4RVMJ4ZTYKQGTLMJG",  # Chuỗi bí mật để tạo checksum
     'vnp_Url': "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",  # URL sandbox của VNPay
-    'vnp_ReturnUrl': "https://bd67-2001-ee0-4f42-2f20-98d0-6fad-f8ad-5324.ngrok-free.app/payment/vnpay-return/",  # URL callback khi thanh toán xong
+    'vnp_ReturnUrl': "https://dec9-2001-ee0-4f42-2f20-4f3-348b-6c0-39f5.ngrok-free.app/payment/vnpay-return/",  # URL callback khi thanh toán xong
 }
 
 # Application definition

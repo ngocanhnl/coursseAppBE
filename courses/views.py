@@ -23,6 +23,35 @@ class ApointmentViewSet(viewsets.ViewSet, generics.CreateAPIView, ):
     serializer_class = serializers.ApointmentSerializer
     permission_classes = [IsHLV]
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+
+        # Lấy dữ liệu từ request
+        student_id = request.data.get('student')
+        teacher_id = request.data.get('teacher')
+
+        # Lấy người dùng
+        try:
+            student = User.objects.get(id=student_id)
+            teacher = User.objects.get(id=teacher_id)
+        except User.DoesNotExist:
+            return Response({'error': 'Student hoặc Teacher không tồn tại.'}, status=400)
+
+        appointment = serializer.instance
+
+        # Gửi thông báo
+        notify_user(
+            [student],  # Hàm notify_user mong đợi list
+            "Lịch hẹn mới",
+            f"Đã có lịch hẹn mới với thầy {teacher.first_name} vào {appointment.date}."
+        )
+
+        return Response({
+            'message': 'Tạo lịch hẹn thành công!',
+            'data': serializer.data
+        }, status=status.HTTP_201_CREATED)
 
 
 class ClassCategoryViewSet(viewsets.ViewSet, generics.ListAPIView):
@@ -293,7 +322,7 @@ class VNPayCreateUrl(APIView):
         vnp_TxnRef = order_id  # Using order_id as transaction reference for consistency
         vnp_Amount = (amount) * 100  # Convert to smallest currency unit (cents)
         vnp_OrderInfo = f"Thanh toan don hang {order_id}"
-        vnp_ReturnUrl = "https://bd67-2001-ee0-4f42-2f20-98d0-6fad-f8ad-5324.ngrok-free.app/payment/vnpay-return/?paymentId="+str(payment.id)
+        vnp_ReturnUrl = "https://dec9-2001-ee0-4f42-2f20-4f3-348b-6c0-39f5.ngrok-free.app/payment/vnpay-return/?paymentId="+str(payment.id)
         # vnp_ReturnUrl = "https://5ed7-2001-ee0-4f01-2ec0-3c2b-72b7-3457-5400.ngrok-free.app/payment/vnpay-return/"
         vnp_CreateDate = datetime.now().strftime('%Y%m%d%H%M%S')
 
@@ -441,6 +470,10 @@ class DiscountViewSet(viewsets.ViewSet, generics.CreateAPIView, generics.Retriev
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         discount = serializer.save(user=request.user)
+        students = User.objects.filter(role = 'hoc-vien').all()
+        print("students-diss", students)
+        notify_user(students, "New Discount Created",
+                    f"'{discount.course}' has new discount.")
         return Response(serializers.DiscountSerializer(discount).data, status=status.HTTP_201_CREATED)
 
 

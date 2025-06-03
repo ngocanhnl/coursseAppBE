@@ -1,12 +1,10 @@
 from collections import defaultdict
 
 from django.contrib import admin
-from django.contrib.admin.views.decorators import staff_member_required
-from django.db.models.functions import TruncMonth, ExtractMonth, ExtractYear, ExtractDay, TruncYear, TruncWeek
-from django.http import JsonResponse
+
 from django.utils.safestring import mark_safe
 from django.urls import path
-from .models import Course, Session, ClassCategory, Lesson, Comment, Bookmark, Tag, User, Discount, TeacherProfile, Payment
+from .models import Course, Session, ClassCategory, Lesson, Comment, Bookmark, Tag, User, Discount, TeacherProfile, Payment, Enrollment, News
 import json
 from django.shortcuts import render
 from django.db.models import Count, Sum, Q, Avg, F
@@ -16,7 +14,7 @@ from django import forms
 from ckeditor_uploader.widgets \
 import CKEditorUploadingWidget
 
-
+from .utils import notify_user
 
 
 class LessonForm(forms.ModelForm):
@@ -30,18 +28,20 @@ class UserAdmin(admin.ModelAdmin):
     # def has_module_permission(self, request):
     #     return request.user.role == 'admin'
     #
+    def has_module_permission(self, request):
+        return request.user.is_authenticated and request.user.role == 'admin'
+
     def has_view_permission(self, request, obj=None):
-        return request.user.role == 'admin'
+        return request.user.is_authenticated and request.user.role == 'admin'
 
     def has_add_permission(self, request):
-        return request.user.role == 'admin'
+        return request.user.is_authenticated and request.user.role == 'admin'
 
     def has_change_permission(self, request, obj=None):
-        return request.user.role == 'admin'
+        return request.user.is_authenticated and request.user.role == 'admin'
 
     def has_delete_permission(self, request, obj=None):
-        return request.user.role == 'admin'
-
+        return request.user.is_authenticated and request.user.role == 'admin'
     list_display = ['username', 'email', 'first_name', 'last_name', 'role']
 
 class MyLessonAdmin(admin.ModelAdmin):
@@ -68,6 +68,43 @@ class MyLessonAdmin(admin.ModelAdmin):
         css = {
             'all': ('/static/css/styles.css',)
         }
+
+
+class NewFeedsAdmin(admin.ModelAdmin):
+    list_display = ['title', 'course', 'created_at']
+    search_fields = ['title', 'course__name']
+    list_filter = ['course', 'created_at']
+    exclude = ['user']
+
+    def image_view(self, news):
+        if news.image:
+            return mark_safe(f"<img src='{news.image.url}' width='200' />")
+        return "No Image"
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        # Nếu là admin, xem tất cả bài học
+        if request.user.role == 'admin':
+            return qs
+        # Nếu là HLV, chỉ hiển thị bài học thuộc các course do họ làm teacher
+        return qs.filter(course__teacher=request.user)
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+
+        # Giới hạn course nếu là HLV
+        if request.user.role == 'hlv':
+            form.base_fields['course'].queryset = Course.objects.filter(teacher=request.user)
+        else:
+            form.base_fields['course'].queryset = Course.objects.all()
+
+        return form
+
+    def save_model(self, request, obj, form, change):
+        # Gán user là người đang đăng nhập nếu tạo mới
+        if not change or not obj.user_id:
+            obj.user = request.user
+        super().save_model(request, obj, form, change)
+
 
 class MyAdminSite(admin.AdminSite):
     site_header = "Course Management"
@@ -126,9 +163,21 @@ class MyAdminSite(admin.AdminSite):
         members_filter = Q(role='hoc-vien', date_joined__gte=start_date)
         if end_date:
             members_filter &= Q(date_joined__lt=end_date)
+        #
+        # members = User.objects.filter(members_filter).values_list('date_joined', flat=True)
+        members = []
+        members2 = []
+        enrollment_filter = Q(created_at__gte=start_date)
+        if end_date:
+            enrollment_filter &= Q(created_at__lt=end_date)
 
-        members = User.objects.filter(members_filter).values_list('date_joined', flat=True)
-
+        if selected_course:
+            enrollment_filter &= Q(course=selected_course)
+        members2 = Enrollment.objects.filter(enrollment_filter).values_list('created_at', flat=True)
+        print("Members2 quẻy:", members2)
+        if members2:
+            members = [m for m in members2 if m]
+        print("Members :", members)
         payments_filter = Q(status='completed', created_at__gte=start_date)
         if end_date:
             payments_filter &= Q(created_at__lt=end_date)
@@ -141,7 +190,6 @@ class MyAdminSite(admin.AdminSite):
         # Group dữ liệu theo period
         member_stats = defaultdict(int)
         for date_joined in members:
-
             if date_joined:
                 period_key = date_format(date_joined)
                 member_stats[period_key] += 1
@@ -345,26 +393,36 @@ class CourseAdmin(admin.ModelAdmin):
         return qs.filter(teacher=request.user)
 
 class DiscountAdmin(admin.ModelAdmin):
-    list_display = ['code', 'percentage', 'start_date', 'end_date']
+    list_display = ['code', 'discount_percentage', 'start_date', 'end_date']
     search_fields = ['code']
     list_filter = ['start_date', 'end_date']
     readonly_fields = ['created_at', 'updated_at']
 
     def has_module_permission(self, request):
-        return request.user.role == 'admin'
+        return request.user.is_authenticated and request.user.role == 'admin'
 
     def has_view_permission(self, request, obj=None):
-        return request.user.role == 'admin'
+        return request.user.is_authenticated and request.user.role == 'admin'
 
     def has_add_permission(self, request):
-        return request.user.role == 'admin'
+        return request.user.is_authenticated and request.user.role == 'admin'
 
     def has_change_permission(self, request, obj=None):
-        return request.user.role == 'admin'
+        return request.user.is_authenticated and request.user.role == 'admin'
 
     def has_delete_permission(self, request, obj=None):
-        return request.user.role == 'admin'
+        return request.user.is_authenticated and request.user.role == 'admin'
 
+    def save_model(self, request, obj, form, change):
+        print("printModel")
+        obj.user = request.user  # Gán user tạo mã giảm giá
+        super().save_model(request, obj, form, change)
+        students = User.objects.filter(role='hoc-vien')
+        notify_user(
+                students,
+                "New Discount Created",
+                f"'{obj.course}' has new discount."
+            )
 
 
 
@@ -374,19 +432,19 @@ class CommentAdmin(admin.ModelAdmin):
     list_filter = ['created_at']
 
     def has_module_permission(self, request):
-        return request.user.role == 'admin'
+        return request.user.is_authenticated and request.user.role == 'admin'
 
     def has_view_permission(self, request, obj=None):
-        return request.user.role == 'admin'
+        return request.user.is_authenticated and request.user.role == 'admin'
 
     def has_add_permission(self, request):
-        return request.user.role == 'admin'
+        return request.user.is_authenticated and request.user.role == 'admin'
 
     def has_change_permission(self, request, obj=None):
-        return request.user.role == 'admin'
+        return request.user.is_authenticated and request.user.role == 'admin'
 
     def has_delete_permission(self, request, obj=None):
-        return request.user.role == 'admin'
+        return request.user.is_authenticated and request.user.role == 'admin'
 
 class TeacherInfoAdmin(admin.ModelAdmin):
     list_display = ('user', 'degree', 'experience_years')  # tuỳ chỉnh hiển thị
@@ -396,22 +454,41 @@ class TeacherInfoAdmin(admin.ModelAdmin):
             kwargs["queryset"] = User.objects.filter(role='hlv')
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
-
-
     def has_module_permission(self, request):
-        return request.user.role == 'admin'
+        return request.user.is_authenticated and request.user.role == 'admin'
 
     def has_view_permission(self, request, obj=None):
-        return request.user.role == 'admin'
+        return request.user.is_authenticated and request.user.role == 'admin'
 
     def has_add_permission(self, request):
-        return request.user.role == 'admin'
+        return request.user.is_authenticated and request.user.role == 'admin'
 
     def has_change_permission(self, request, obj=None):
-        return request.user.role == 'admin'
+        return request.user.is_authenticated and request.user.role == 'admin'
 
     def has_delete_permission(self, request, obj=None):
-        return request.user.role == 'admin'
+        return request.user.is_authenticated and request.user.role == 'admin'
+
+
+class PaymentAdmin(admin.ModelAdmin):
+    list_display = ['order', 'amount', 'status', 'created_at']
+    search_fields = ['order__course__name', 'order__user__username']
+    list_filter = ['status', 'created_at']
+
+    def has_module_permission(self, request):
+        return request.user.is_authenticated and request.user.role == 'admin'
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_authenticated and request.user.role == 'admin'
+
+    def has_add_permission(self, request):
+        return request.user.is_authenticated and request.user.role == 'admin'
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_authenticated and request.user.role == 'admin'
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_authenticated and request.user.role == 'admin'
 
 
 admin_site = MyAdminSite(name='eCourseAdmin')
@@ -424,5 +501,7 @@ admin_site.register(Lesson, MyLessonAdmin)
 admin_site.register(Comment)
 admin_site.register(Bookmark)
 admin_site.register(Tag)
-admin_site.register(Discount)
+admin_site.register(Discount, DiscountAdmin)
 admin_site.register(TeacherProfile, TeacherInfoAdmin)
+admin_site.register(Payment, PaymentAdmin)
+admin_site.register(News, NewFeedsAdmin)

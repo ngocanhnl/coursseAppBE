@@ -25,6 +25,7 @@ def send_push_notification(token, title, body):
 
 def notify_user(users, title, body):
     devices = ExpoDevice.objects.filter(user__in=users)
+    print("Đang gửi thông báo đến các thiết bị của người dùng:", users)
 
     if not devices.exists():
         print("❗ Không có thiết bị nào có push token cho các user này.")

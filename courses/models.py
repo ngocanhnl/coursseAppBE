@@ -87,12 +87,7 @@ class Course(BaseModel):
     start_date = models.DateField()
     end_date = models.DateField()
     bookmark_user = models.ManyToManyField(User, through=Bookmark, related_name='bookmark_user')
-    # tạm thời đổi tên để Django coi như field mới
-    # students_new = models.ManyToManyField(User, related_name="enrolled_courses_new", blank=True)
-
     students = models.ManyToManyField(User, through='Enrollment', related_name="enrolled_courses")
-    # students = models.ManyToManyField(User, related_name="enrolled_courses", blank=True)
-    # students = models.ManyToManyField(User, related_name="enrolled_courses")
 
     teacher = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='teaching_courses')
     def __str__(self):
@@ -112,15 +107,15 @@ class Discount(BaseModel):
 
 
 class Session(BaseModel):
-    class_instance = models.ForeignKey(Course, on_delete=models.CASCADE)
-    date = models.DateField()
+    class_instance = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='sessions')
+
     start_time = models.TimeField()
     end_time = models.TimeField()
     notes = models.TextField(blank=True)
 
 
     def __str__(self):
-        return f"{self.class_instance.name} - {self.date} {self.start_time}"
+        return f"{self.class_instance.name} - {self.start_time} - {self.end_time}"
 
 
 
@@ -180,13 +175,24 @@ class Apointment(BaseModel):
 
 
 class News(BaseModel):
+    TYPE_NEWS_CHOICES = [
+        ('work out', 'Work Out'),
+        ('nutrition', 'Nutrition'),
+        ('event', 'Event'),
+        ('news', 'News'),
+    ]
+
     title = models.CharField(max_length=100)
     content = RichTextField()
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True, null=True)
-    type_news = models.CharField(max_length=100, default='news')
+    type_news = models.CharField(
+        max_length=20,
+        choices=TYPE_NEWS_CHOICES,
+        default='news'
+    )
     image = CloudinaryField('image', null=True, blank=True)
     def __str__(self):
         return f"{self.content}"
@@ -201,7 +207,7 @@ class Order(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Order {self.order_id} - {self.user.username} - {self.course.name}"
+        return f"Order {self.user.username} - {self.course.name}"
 
 
 import uuid

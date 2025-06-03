@@ -146,31 +146,56 @@
     }
 
     // Biểu đồ đăng ký học viên
+    {#const memberCtx = document.getElementById('memberChart').getContext('2d');#}
+    {#new Chart(memberCtx, {#}
+    {#    type: 'line',#}
+    {#    data: {#}
+    {#        labels: {{ member_chart_data.labels|safe }},#}
+    {#        datasets: [{#}
+    {#            label: 'Học viên mới',#}
+    {#            data: {{ member_chart_data.data|safe }},#}
+    {#            borderColor: 'rgb(75, 192, 192)',#}
+    {#            backgroundColor: 'rgba(75, 192, 192, 0.2)',#}
+    {#            tension: 0.1#}
+    {#        }]#}
+    {#    },#}
+    {#    options: {#}
+    {#        responsive: true,#}
+    {#        scales: {#}
+    {#            y: {#}
+    {#                beginAtZero: true,#}
+    {#                ticks: {#}
+    {#                    stepSize: 1#}
+    {#                }#}
+    {#            }#}
+    {#        }#}
+    {#    }#}
     const memberCtx = document.getElementById('memberChart').getContext('2d');
-    new Chart(memberCtx, {
-        type: 'line',
-        data: {
-            labels: {{ member_chart_data.labels|safe }},
-            datasets: [{
-                label: 'Học viên mới',
-                data: {{ member_chart_data.data|safe }},
-                borderColor: 'rgb(75, 192, 192)',
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                tension: 0.1
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 1
-                    }
+new Chart(memberCtx, {
+    type: 'bar',  // Chuyển từ 'line' sang 'bar'
+    data: {
+        labels: {{ member_chart_data.labels|safe }},
+        datasets: [{
+            label: 'Học viên mới',
+            data: {{ member_chart_data.data|safe }},
+            backgroundColor: 'rgba(54, 162, 235, 0.6)',  // Màu nền cột
+            borderColor: 'rgba(54, 162, 235, 1)',         // Viền cột
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
                 }
             }
         }
-    });
+    }
+});
+
 
     // Biểu đồ doanh thu
     const revenueCtx = document.getElementById('revenueChart').getContext('2d');

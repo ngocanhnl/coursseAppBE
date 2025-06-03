@@ -2,7 +2,7 @@ from cloudinary.provisioning import users
 from rest_framework.serializers import ModelSerializer
 from rest_framework.validators import UniqueValidator
 from rest_framework import serializers
-from courses.models import Course, ClassCategory, Lesson, Comment, Discount, Tag, User, Apointment, News, Payment,Order, ExpoDevice, TeacherProfile
+from courses.models import Course, ClassCategory, Lesson, Comment, Discount, Tag, User, Apointment, News, Payment,Order, ExpoDevice, TeacherProfile, Session
 from datetime import date
 
 class UserSerializer(ModelSerializer):
@@ -71,6 +71,12 @@ class DiscountSerializer(serializers.ModelSerializer):
 
 
 
+class SessionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Session
+        fields = ['start_time', 'end_time', 'notes', 'class_instance']
+
+
 
 
 class CourseSerializer(ItemSerializer):
@@ -78,13 +84,14 @@ class CourseSerializer(ItemSerializer):
     students = UserMiniSerializer(many=True, read_only=True)
     teacher = UserMiniSerializer(read_only=True)
     best_active_discount = serializers.SerializerMethodField()
+    sessions = SessionSerializer(many=True, read_only=True)
     def get_like(self, course):
         request =  self.context.get('request')
         if request and request.user.is_authenticated:
             return course.like_set.filter(user=request.user, is_active=True).exists()
     class Meta:
         model = Course
-        fields = ['id', 'name', 'description', 'image','capacity', 'price','best_active_discount', 'start_date', 'end_date','like', 'teacher', 'category', 'students']
+        fields = ['id', 'name', 'description', 'image','capacity', 'price','best_active_discount', 'start_date', 'end_date','like', 'teacher', 'category', 'students', 'sessions']
 
     def get_best_active_discount(self, course):
         today = date.today()
@@ -142,7 +149,6 @@ class ApointmentSerializer(ModelSerializer):
         data['teacher'] = UserSerializer(instance.teacher).data
         data['student'] = UserSerializer(instance.student).data
         return data
-
 
     class Meta:
         model = Apointment
