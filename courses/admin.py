@@ -3,10 +3,14 @@ import calendar as pycalendar
 from collections import defaultdict, OrderedDict
 
 from django.contrib import admin
+from django.contrib.auth.forms import ReadOnlyPasswordHashField
 
 from django.utils.safestring import mark_safe
 from django.urls import path
-from django.utils.timezone import make_aware
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+
+
+
 
 from .models import Course, Session, ClassCategory, Lesson, Comment, Bookmark, Tag, User, Discount, TeacherProfile, Payment, Enrollment, News
 import json
@@ -50,25 +54,81 @@ class LessonForm(forms.ModelForm):
         fields = '__all__'
 
 
-class UserAdmin(admin.ModelAdmin):
-    # def has_module_permission(self, request):
-    #     return request.user.role == 'admin'
-    #
-    def has_module_permission(self, request):
-        return request.user.is_authenticated and request.user.role == 'admin'
 
-    def has_view_permission(self, request, obj=None):
-        return request.user.is_authenticated and request.user.role == 'admin'
+class UserCreationForm(forms.ModelForm):
+    password1 = forms.CharField(label='Password', widget=forms.PasswordInput)
+    password2 = forms.CharField(label='Password confirmation', widget=forms.PasswordInput)
 
-    def has_add_permission(self, request):
-        return request.user.is_authenticated and request.user.role == 'admin'
+    class Meta:
+        model = User
+        fields = ('username', 'email', 'role')
 
-    def has_change_permission(self, request, obj=None):
-        return request.user.is_authenticated and request.user.role == 'admin'
+    def clean_password2(self):
+        pw1 = self.cleaned_data.get("password1")
+        pw2 = self.cleaned_data.get("password2")
+        if pw1 and pw2 and pw1 != pw2:
+            raise forms.ValidationError("Passwords don't match")
+        return pw2
 
-    def has_delete_permission(self, request, obj=None):
-        return request.user.is_authenticated and request.user.role == 'admin'
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.set_password(self.cleaned_data["password1"])
+        if commit:
+            user.save()
+        return user
+
+
+class UserChangeForm(forms.ModelForm):
+    password = ReadOnlyPasswordHashField()
+
+    class Meta:
+        model = User
+        fields = ('username', 'email', 'password', 'role', 'is_active', 'is_staff')
+
+    def clean_password(self):
+        return self.initial["password"]
+
+
+class UserAdmin(BaseUserAdmin):
+    form = UserChangeForm
+    add_form = UserCreationForm
+
     list_display = ['username', 'email', 'first_name', 'last_name', 'role']
+    list_filter = ['role', 'is_staff']
+    fieldsets = (
+        (None, {'fields': ('username', 'email', 'password')}),
+        ('Thông tin cá nhân', {'fields': ('first_name', 'last_name', 'phone_number', 'avatar')}),
+        ('Phân quyền', {'fields': ('is_staff', 'is_superuser', 'role')}),
+    )
+    add_fieldsets = (
+        (None, {
+            'classes': ('wide',),
+            'fields': ('username', 'email', 'role', 'password1', 'password2')}
+        ),
+    )
+    search_fields = ('email',)
+    ordering = ('email',)
+
+
+
+#
+# class UserAdmin(admin.ModelAdmin):
+#
+#     def has_module_permission(self, request):
+#         return request.user.is_authenticated and request.user.role == 'admin'
+#
+#     def has_view_permission(self, request, obj=None):
+#         return request.user.is_authenticated and request.user.role == 'admin'
+#
+#     def has_add_permission(self, request):
+#         return request.user.is_authenticated and request.user.role == 'admin'
+#
+#     def has_change_permission(self, request, obj=None):
+#         return request.user.is_authenticated and request.user.role == 'admin'
+#
+#     def has_delete_permission(self, request, obj=None):
+#         return request.user.is_authenticated and request.user.role == 'admin'
+#     list_display = ['username', 'email', 'first_name', 'last_name', 'role']
 
 class MyLessonAdmin(admin.ModelAdmin):
     list_display = ['title', 'course', 'created_at']

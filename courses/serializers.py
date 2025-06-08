@@ -74,7 +74,7 @@ class DiscountSerializer(serializers.ModelSerializer):
 class SessionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Session
-        fields = ['start_time', 'end_time', 'notes', 'class_instance']
+        fields = ['start_time', 'end_time', 'notes', 'class_instance', 'date']
 
 
 

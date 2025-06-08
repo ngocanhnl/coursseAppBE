@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from django.db.models import Q
 from courses import serializers
 from rest_framework import viewsets, generics, status, parsers, permissions
-from courses.models import ClassCategory, Course, Lesson, Comment, Tag, User, Like, News, Apointment, Payment, Order, ExpoDevice, TeacherProfile
+from courses.models import ClassCategory, Course, Lesson, Comment, Tag, User, Like, News, Apointment, Payment, Order, ExpoDevice, TeacherProfile, Discount
 from courses.paginators import ItemPagination, CommentPagination
 from courses.perm import CommentOwner, IsHLV
 from courses.utils import notify_user
@@ -211,6 +211,11 @@ class UserViewSet(viewsets.ViewSet, generics.CreateAPIView, generics.RetrieveAPI
 
 
 
+    @action( methods=['get'], url_path='get-students', detail=False, permission_classes=[permissions.IsAuthenticated])
+    def get_students(self, request):
+        students = User.objects.filter(role='hoc-vien', is_active=True)
+        serializer = serializers.UserMiniSerializer(students, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(methods=['get'], url_path='my-appointment', detail=True, permission_classes=[permissions.IsAuthenticated])
     def get_my_appointment(self, request, pk):
@@ -267,10 +272,10 @@ class UserViewSet(viewsets.ViewSet, generics.CreateAPIView, generics.RetrieveAPI
 
 
 
-class CommentViewSet(viewsets.ViewSet, generics.DestroyAPIView, generics.UpdateAPIView):
-    queryset = Comment.objects.filter(is_active=True)
-    serializer_class = serializers.CommentSerializer
-    permission_classes = [CommentOwner]
+# class CommentViewSet(viewsets.ViewSet, generics.UpdateAPIView):
+#     queryset = Comment.objects.filter(is_active=True)
+#     serializer_class = serializers.CommentSerializer
+#     permission_classes = [CommentOwner]
 
 
 
@@ -322,7 +327,7 @@ class VNPayCreateUrl(APIView):
         vnp_TxnRef = order_id  # Using order_id as transaction reference for consistency
         vnp_Amount = (amount) * 100  # Convert to smallest currency unit (cents)
         vnp_OrderInfo = f"Thanh toan don hang {order_id}"
-        vnp_ReturnUrl = "https://dec9-2001-ee0-4f42-2f20-4f3-348b-6c0-39f5.ngrok-free.app/payment/vnpay-return/?paymentId="+str(payment.id)
+        vnp_ReturnUrl = "https://c5e8-2001-ee0-4f42-cff0-3c0f-a5d3-f65d-1353.ngrok-free.app/payment/vnpay-return/?paymentId="+str(payment.id)
         # vnp_ReturnUrl = "https://5ed7-2001-ee0-4f01-2ec0-3c2b-72b7-3457-5400.ngrok-free.app/payment/vnpay-return/"
         vnp_CreateDate = datetime.now().strftime('%Y%m%d%H%M%S')
 
@@ -464,6 +469,7 @@ class ExpoDeviceView(APIView):
 
 class DiscountViewSet(viewsets.ViewSet, generics.CreateAPIView, generics.RetrieveAPIView):
     serializer_class = serializers.DiscountSerializer
+    queryset = Discount.objects.all()
     permission_classes = [permissions.IsAuthenticated]
 
     def create(self, request, *args, **kwargs):
@@ -494,3 +500,20 @@ class TeacherProfileViewSet(viewsets.ViewSet):
 
         serializer = serializers.TeacherProfileSerializer(teacher_profile)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+class SendNotificationAPI(viewsets.ViewSet):
+
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    def noti_User_System(self, request):
+        persons = User.objects.filter(role='tiep_tan', is_active=True)
+        message = f"Có tin nhắn mới của học viên '{request.user.first_name}'"
+        if request.data.get('user_id'):
+            persons = User.objects.filter(id=request.data.get('user_id'))
+            message = "Có tin nhắn hệ thống"
+        print("request", request.user)
+
+        notify_user(persons,message,f"{request.data.get('text')}" )
+        #
+        # notify_user(students, "Bài học đã hoàn thành",
+        #             f"Bài học '{lesson.title}' đã được giáo viên đánh dấu hoàn thành.")
+        return Response({"success": "Thong bao thanh cong"},status=status.HTTP_200_OK)

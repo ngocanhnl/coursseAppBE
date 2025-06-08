@@ -12,7 +12,7 @@ router.register('lessons', views.LessonViewSet, basename='lesson')
 
 router.register('users', views.UserViewSet, basename='user')
 
-router.register('comments', views.CommentViewSet, basename='comment')
+# router.register('comments', views.CommentViewSet, basename='comment')
 
 router.register('apointment', views.ApointmentViewSet, basename='apointment')
 
@@ -20,6 +20,8 @@ router.register('order', views.OrderViewSet, basename='order')
 
 router.register('discount', views.DiscountViewSet, basename='discount')
 router.register('teacher-profile', views.TeacherProfileViewSet, basename='teacher-profile')
+
+router.register('noti', views.SendNotificationAPI, basename='noti')
 
 from .views import VNPayCreateUrl, VNPayReturnView, ExpoDeviceView
 

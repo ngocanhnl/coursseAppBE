@@ -33,7 +33,7 @@ VNPAY_CONFIG = {
     'vnp_TmnCode': "VH92V83I",  # Mã website của merchant trên hệ thống VNPay
     'vnp_HashSecret': "FI8DNHRRIWNQ3WB4RVMJ4ZTYKQGTLMJG",  # Chuỗi bí mật để tạo checksum
     'vnp_Url': "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",  # URL sandbox của VNPay
-    'vnp_ReturnUrl': "https://dec9-2001-ee0-4f42-2f20-4f3-348b-6c0-39f5.ngrok-free.app/payment/vnpay-return/",  # URL callback khi thanh toán xong
+    'vnp_ReturnUrl': "https://c5e8-2001-ee0-4f42-cff0-3c0f-a5d3-f65d-1353.ngrok-free.app/payment/vnpay-return/",  # URL callback khi thanh toán xong
 }
 
 # Application definition
@@ -131,18 +131,18 @@ pymysql.install_as_MySQLdb()
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    # {
+    #     'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    # },
+    # {
+    #     'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+    # },
+    # {
+    #     'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    # },
+    # {
+    #     'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    # },
 ]
 
 

@@ -108,7 +108,7 @@ class Discount(BaseModel):
 
 class Session(BaseModel):
     class_instance = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='sessions')
-
+    date = models.DateField(null=True, blank=True)
     start_time = models.TimeField()
     end_time = models.TimeField()
     notes = models.TextField(blank=True)
