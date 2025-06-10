@@ -30,7 +30,7 @@ class UserSerializer(ModelSerializer):
 class UserMiniSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['first_name', 'avatar','id']
+        fields = ['first_name', 'avatar','id', 'last_name']
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

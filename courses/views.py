@@ -327,7 +327,7 @@ class VNPayCreateUrl(APIView):
         vnp_TxnRef = order_id  # Using order_id as transaction reference for consistency
         vnp_Amount = (amount) * 100  # Convert to smallest currency unit (cents)
         vnp_OrderInfo = f"Thanh toan don hang {order_id}"
-        vnp_ReturnUrl = "https://c5e8-2001-ee0-4f42-cff0-3c0f-a5d3-f65d-1353.ngrok-free.app/payment/vnpay-return/?paymentId="+str(payment.id)
+        vnp_ReturnUrl = "https://2420-2001-ee0-4f42-cff0-bc5a-f81c-c731-7fd3.ngrok-free.app/payment/vnpay-return/?paymentId="+str(payment.id)
         # vnp_ReturnUrl = "https://5ed7-2001-ee0-4f01-2ec0-3c2b-72b7-3457-5400.ngrok-free.app/payment/vnpay-return/"
         vnp_CreateDate = datetime.now().strftime('%Y%m%d%H%M%S')
 
